@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -55,7 +56,7 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 
 	movie, err := app.models.Movies.Get(id)
 	if err != nil {
-		if err == data.ErrRecordNotFound {
+		if errors.Is(err, data.ErrRecordNotFound) {
 			app.notFoundResponse(w, r)
 			return
 		}
@@ -78,8 +79,12 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	movie, err := app.models.Movies.Get(id)
 	if err != nil {
-		if err == data.ErrRecordNotFound {
+		if errors.Is(err, data.ErrRecordNotFound) {
 			app.notFoundResponse(w, r)
+			return
+		}
+		if errors.Is(err, data.ErrEditConflict) {
+			app.editConflictResponse(w, r)
 			return
 		}
 		app.serverErrorResponse(w, r, err)
@@ -99,10 +104,18 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	movie.Title = *input.Title
-	movie.Year = *input.Year
-	movie.Runtime = *input.Runtime
-	movie.Genres = input.Genres
+	if input.Title != nil {
+		movie.Title = *input.Title
+	}
+	if input.Year != nil {
+		movie.Year = *input.Year
+	}
+	if input.Runtime != nil {
+		movie.Runtime = *input.Runtime
+	}
+	if input.Genres != nil {
+		movie.Genres = input.Genres
+	}
 
 	v := validator.New()
 
